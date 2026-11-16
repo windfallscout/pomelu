@@ -16,6 +16,7 @@ import 'package:hermes/hermes/models/attach_result.dart';
 import 'package:hermes/hermes/models/compress_result.dart';
 import 'package:hermes/hermes/models/context_breakdown.dart';
 import 'package:hermes/hermes/models/gateway_action.dart';
+import 'package:hermes/hermes/models/model_options.dart';
 import 'package:hermes/hermes/models/session_message.dart';
 import 'package:hermes/hermes/models/session_resume.dart';
 import 'package:hermes/hermes/models/session_summary.dart';
@@ -129,6 +130,74 @@ class ScriptedApi extends FakeApi {
   Future<SpeechAudio> speak({required String text, String? profile}) async {
     spoken.add(text);
     return (bytes: Uint8List.fromList([1]), mimeType: 'audio/mpeg');
+  }
+
+  /// What `model.options` returns.
+  ModelOptions modelOptionsResult = const ModelOptions();
+
+  /// Scripted answers/failures for `switchModel`, one per call; null/empty
+  /// succeeds with [ModelSwitched].
+  final List<Object?> switchModelScript = [];
+
+  /// Optional per-call override for `switchModel`.
+  Future<ModelSwitchResult> Function({
+    required String runtimeId,
+    required String model,
+    String? provider,
+    String? confirm,
+  })?
+  onSwitchModel;
+
+  /// Recorded `switchModel` calls.
+  final List<
+    ({String runtimeId, String model, String? provider, String? confirm})
+  >
+  modelSwitches = [];
+
+  /// Recorded `setReasoningEffort` calls.
+  final List<({String runtimeId, String effort})> efforts = [];
+
+  @override
+  Future<ModelOptions> modelOptions({
+    String? runtimeId,
+    String? profile,
+  }) async => modelOptionsResult;
+
+  @override
+  Future<ModelSwitchResult> switchModel({
+    required String runtimeId,
+    required String model,
+    String? provider,
+    String? confirm,
+  }) async {
+    modelSwitches.add((
+      runtimeId: runtimeId,
+      model: model,
+      provider: provider,
+      confirm: confirm,
+    ));
+    if (onSwitchModel != null) {
+      return onSwitchModel!(
+        runtimeId: runtimeId,
+        model: model,
+        provider: provider,
+        confirm: confirm,
+      );
+    }
+    if (switchModelScript.isNotEmpty) {
+      final next = switchModelScript.removeAt(0);
+      if (next is ModelSwitchResult) return next;
+      if (next != null) throwInjected(next);
+    }
+    return ModelSwitched(model: model, provider: provider ?? '');
+  }
+
+  @override
+  Future<void> setReasoningEffort({
+    required String runtimeId,
+    required String effort,
+  }) async {
+    efforts.add((runtimeId: runtimeId, effort: effort));
   }
 
   /// What `session.context_breakdown` answers; null throws as an older

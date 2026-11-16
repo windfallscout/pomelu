@@ -1456,6 +1456,18 @@ abstract class AppLocalizations {
   /// **'No models match'**
   String get composerNoModelMatch;
 
+  /// Confirm title when switching to a guarded model. {model} is the model's display name.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {model}?'**
+  String composerModelConfirmTitle(String model);
+
+  /// No description provided for @composerModelSwitchAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch anyway'**
+  String get composerModelSwitchAnyway;
+
   /// No description provided for @slashNoMatch.
   ///
   /// In en, this message translates to:

@@ -293,6 +293,9 @@
   "composerNoModels": "No models available",
   "composerSearchModels": "Search models",
   "composerNoModelMatch": "No models match",
+  "composerModelConfirmTitle": "Switch to {model}?",
+  "@composerModelConfirmTitle": {"description": "Confirm title when switching to a guarded model. {model} is the model's display name.", "placeholders": {"model": {"type": "String"}}},
+  "composerModelSwitchAnyway": "Switch anyway",
 
   "slashNoMatch": "No matching command",
   "slashDone": "Done",

@@ -10,6 +10,7 @@ import 'package:hermes/features/connection/presentation/connection_providers.dar
 import 'package:hermes/hermes/events/gateway_event.dart';
 import 'package:hermes/hermes/hermes_constants.dart';
 import 'package:hermes/hermes/hermes_failure.dart';
+import 'package:hermes/hermes/models/model_options.dart';
 import 'package:hermes/hermes/models/session_message.dart';
 import 'package:hermes/hermes/models/session_resume.dart';
 import 'package:hermes/hermes/models/session_summary.dart';
@@ -284,6 +285,92 @@ void main() {
     gate.complete();
     await pumpEventQueue();
     expect(rig.client.watched, isEmpty);
+  });
+
+  group('model switching', () {
+    test('retries on a stale runtime id and updates model/provider', () async {
+      var generation = 1;
+      final api = ScriptedApi()
+        ..resume = (id) => SessionResume(
+          sessionId: 'rt-${generation++}',
+          storedSessionId: id,
+          messagesOmitted: true,
+        );
+      api.switchModelScript.add(
+        const ServerFailure('gone', rpcCode: HermesProtocol.errSessionNotFound),
+      );
+      final rig = bootChat(api: api);
+      await pumpEventQueue();
+      expect(stateOf(rig).runtimeId, 'rt-1');
+
+      await chatOf(rig).switchModel('claude-4.5', provider: 'anthropic');
+      expect(api.resumedIds, hasLength(2));
+      expect(api.modelSwitches.map((s) => s.runtimeId), ['rt-1', 'rt-2']);
+      expect(stateOf(rig).model, 'claude-4.5');
+      expect(stateOf(rig).provider, 'anthropic');
+      expect(stateOf(rig).error, isNull);
+    });
+
+    test(
+      'a 4001 error with model_resolution_failed surfaces instead of reopening',
+      () async {
+        final api = ScriptedApi();
+        api.switchModelScript.add(
+          const ServerFailure(
+            'model_resolution_failed',
+            rpcCode: HermesProtocol.errSessionNotFound,
+            data: {'reason': 'model_resolution_failed'},
+          ),
+        );
+        final rig = bootChat(api: api);
+        await pumpEventQueue();
+
+        await chatOf(rig).switchModel('bad-model', provider: 'unknown');
+        expect(api.resumedIds, hasLength(1));
+        expect(stateOf(rig).error, isA<ServerFailure>());
+        expect(stateOf(rig).model, isEmpty);
+      },
+    );
+
+    test('concurrent switches serialize and keep the latest choice', () async {
+      final firstGate = Completer<void>();
+      final api = ScriptedApi();
+      api.onSwitchModel =
+          ({required runtimeId, required model, provider, confirm}) async {
+            if (model == 'first-model') await firstGate.future;
+            return ModelSwitched(model: model, provider: provider ?? '');
+          };
+      final rig = bootChat(api: api);
+      await pumpEventQueue();
+
+      final f1 = chatOf(rig).switchModel('first-model', provider: 'p1');
+      await pumpEventQueue();
+      final f2 = chatOf(rig).switchModel('second-model', provider: 'p2');
+      firstGate.complete();
+      await Future.wait([f1, f2]);
+
+      expect(api.modelSwitches.map((s) => s.model), [
+        'first-model',
+        'second-model',
+      ]);
+      expect(stateOf(rig).model, 'second-model');
+      expect(stateOf(rig).provider, 'p2');
+      expect(stateOf(rig).error, isNull);
+    });
+
+    test(
+      'unexpected exceptions set error instead of escaping unawaited',
+      () async {
+        final api = ScriptedApi()
+          ..switchModelScript.add(StateError('unexpected boom'));
+        final rig = bootChat(api: api);
+        await pumpEventQueue();
+
+        await chatOf(rig).switchModel('claude-4.5', provider: 'anthropic');
+        expect(stateOf(rig).error, isA<ProtocolFailure>());
+        expect(stateOf(rig).model, isEmpty);
+      },
+    );
   });
 }
 

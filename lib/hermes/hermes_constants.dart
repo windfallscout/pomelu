@@ -203,6 +203,10 @@ abstract final class HermesProtocol {
   static const String sessionTokenHeader = 'X-Hermes-Session-Token';
   static const int errSessionNotFound = 4001;
   static const int errSessionGone = 4007;
+  static const String reasonRevisionConflict = 'revision_conflict';
+  static const String reasonStaleGeneration = 'stale_generation';
+  static const String reasonUseSessionMutationModel =
+      'use_session_mutation_model';
   static const int errImageTooLarge = 4018;
 
   /// `session.title` refused the title; the text tells a conflict
@@ -272,6 +276,7 @@ abstract final class HermesMethods {
   static const String sessionTitle = 'session.title';
   static const String sessionArchive = 'session.archive';
   static const String sessionCompress = 'session.compress';
+  static const String sessionMutate = 'session.mutate';
   static const String sessionContextBreakdown = 'session.context_breakdown';
   static const String sessionInterrupt = 'session.interrupt';
   static const String promptSubmit = 'prompt.submit';

@@ -820,6 +820,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get composerNoModelMatch => 'No models match';
 
   @override
+  String composerModelConfirmTitle(String model) {
+    return 'Switch to $model?';
+  }
+
+  @override
+  String get composerModelSwitchAnyway => 'Switch anyway';
+
+  @override
   String get slashNoMatch => 'No matching command';
 
   @override

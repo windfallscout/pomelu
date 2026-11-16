@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io' show HttpHeaders;
 import 'dart:typed_data';
 
+import 'package:uuid/uuid.dart';
+
 import '../client/hermes_client.dart';
 import '../hermes_constants.dart';
 import '../hermes_failure.dart';

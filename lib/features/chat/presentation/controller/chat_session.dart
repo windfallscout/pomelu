@@ -100,9 +100,13 @@ mixin _Session on _$ChatController {
       stopRequested: (!idle || run.staging) && state.stopRequested,
       thinkingLabel: idle ? '' : state.thinkingLabel,
       statusLine: idle ? '' : state.statusLine,
-      model: r.info?.model ?? state.model,
-      effort: r.info?.reasoningEffort ?? state.effort,
-      provider: r.info?.provider ?? state.provider,
+      model: (r.info?.model.isNotEmpty ?? false) ? r.info!.model : state.model,
+      effort: (r.info?.reasoningEffort.isNotEmpty ?? false)
+          ? r.info!.reasoningEffort
+          : state.effort,
+      provider: (r.info?.provider.isNotEmpty ?? false)
+          ? r.info!.provider
+          : state.provider,
       openingUsage: SessionUsage.fromMap(r.sessionId, r.info?.usage),
       // An idle session's plan is a finished turn's.
       plan: idle ? null : r.todoState,
@@ -198,6 +202,26 @@ mixin _Session on _$ChatController {
     }
   }
 
+  /// Ensures a bound live session before issuing a session control, waiting on
+  /// an in-flight open/release/reopen and surfacing offline state instead of
+  /// silently dropping the action.
+  Future<bool> _ensureSession(_Run run) async {
+    if (run.opening != null) await run.opening;
+    if (!run.live) return false;
+    if (run.released) await _comeBack(run);
+    if (!run.live) return false;
+    if (run.reopening != null) await run.reopening;
+    if (!run.live) return false;
+    if (state.runtimeId.isEmpty) {
+      if (!run.client.isConnected) {
+        state = state.copyWith(error: NetworkFailure.notConnected);
+        return false;
+      }
+      await (state.storedId.isNotEmpty ? _reopen(run) : _open(run));
+    }
+    return run.live && state.runtimeId.isNotEmpty;
+  }
+
   /// Runs [call] with the bound runtime id, and once more after a resume when
   /// that id went stale. A chat closed meanwhile is a [CancelledFailure].
   Future<T> _onSession<T>(_Run run, Future<T> Function(String id) call) async {
@@ -209,13 +233,23 @@ mixin _Session on _$ChatController {
     try {
       return await call(id());
     } on ServerFailure catch (e) {
-      if (e.rpcCode != HermesProtocol.errSessionNotFound &&
-          e.rpcCode != HermesProtocol.errSessionGone) {
-        rethrow;
-      }
+      if (!_isMissingSession(e)) rethrow;
       await _reopen(run);
       return call(id());
     }
+  }
+
+  static bool _isMissingSession(ServerFailure e) {
+    if (e.rpcCode == HermesProtocol.errSessionGone) return true;
+    if (e.rpcCode != HermesProtocol.errSessionNotFound) return false;
+    final data = e.data;
+    if (data is Map && data['reason'] != null) {
+      final reason = data['reason'].toString();
+      return reason == 'not_found' ||
+          reason == 'session_not_found' ||
+          reason == 'session_gone';
+    }
+    return true;
   }
 
   void _onConnection(_Run run, HermesConnectionState s) {
