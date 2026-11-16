@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hermes/core/storage/secret_store.dart';
+import 'package:hermes/core/storage/secret_vault.dart';
 import 'package:hermes/features/chat/domain/clarify_draft.dart';
 import 'package:hermes/features/chat/presentation/widgets/request_card.dart';
 import 'package:hermes/hermes/requests/clarify_question.dart';
 import 'package:hermes/hermes/requests/server_request.dart';
 
 import '../../support/app_host.dart';
+import '../../support/memory_stores.dart';
 
 /// What each card sent, and what it should answer back.
 class Calls {
@@ -22,6 +26,7 @@ Future<Calls> pumpCard(
   WidgetTester tester,
   ServerRequest request, {
   bool settles = true,
+  List<Override> overrides = const [],
 }) async {
   final calls = Calls()..settles = settles;
   await pumpApp(
@@ -35,6 +40,7 @@ Future<Calls> pumpCard(
         onInput: calls.record,
       ),
     ),
+    overrides: overrides,
   );
   return calls;
 }
@@ -145,5 +151,60 @@ void main() {
     await tester.tap(find.text('Skip'));
     await tester.pump();
     expect(calls.sent, ['hunter2', '']);
+  });
+
+  testWidgets('a saved secret matching the request fills masked and sends', (
+    tester,
+  ) async {
+    final secrets = MemorySecretStore();
+    await SecretVault(secrets).write('OPENAI_API_KEY', 'sk-saved-123');
+    final calls = await pumpCard(
+      tester,
+      const ServerRequest.input(
+        id: '4',
+        sessionId: 's',
+        kind: InputKind.secret,
+        subject: 'OPENAI_API_KEY',
+        prompt: 'Enter OpenAI key',
+      ),
+      overrides: [secretStoreProvider.overrideWithValue(secrets)],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Use OPENAI_API_KEY'), findsOneWidget);
+    await tester.tap(find.text('Use OPENAI_API_KEY'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.obscureText, isTrue);
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    expect(calls.sent, ['sk-saved-123']);
+  });
+
+  testWidgets('a non-matching input request offers saved secrets menu', (
+    tester,
+  ) async {
+    final secrets = MemorySecretStore();
+    await SecretVault(secrets).write('SUDO_PASS', 's3cr3t-sudo');
+    final calls = await pumpCard(
+      tester,
+      const ServerRequest.input(
+        id: '5',
+        sessionId: 's',
+        kind: InputKind.sudo,
+        subject: 'sudo apt update',
+      ),
+      overrides: [secretStoreProvider.overrideWithValue(secrets)],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Use saved secret'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SUDO_PASS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    expect(calls.sent, ['s3cr3t-sudo']);
   });
 }

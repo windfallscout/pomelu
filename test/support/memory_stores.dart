@@ -29,6 +29,13 @@ class MemorySecretStore implements SecretStore {
 
   @override
   Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<Map<String, String>> readAll() async {
+    final e = readError;
+    if (e != null) throwInjected(e);
+    return Map.unmodifiable(values);
+  }
 }
 
 /// [AwayStore] in fields.
