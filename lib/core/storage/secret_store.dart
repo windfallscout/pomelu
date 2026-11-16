@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Encrypted persistence for tokens and passwords.
+/// Encrypted persistence for tokens, passwords, and user secrets.
 abstract interface class SecretStore {
   Future<String?> read(String key);
   Future<void> write(String key, String value);
   Future<void> delete(String key);
+  Future<Map<String, String>> readAll();
 }
 
 class SecureSecretStore implements SecretStore {
@@ -13,7 +14,11 @@ class SecureSecretStore implements SecretStore {
     : _storage = storage ?? const FlutterSecureStorage(iOptions: _ios);
 
   /// Readable once the phone was unlocked after a restart: the background
-  /// check for bot messages runs while it is locked. Kept on this device.
+  /// check for bot messages runs while it is locked. Kept on this device
+  /// (`first_unlock_this_device`, with `synchronizable: false` by default so
+  /// entries never sync to iCloud Keychain or leave in backups). Android uses
+  /// `AndroidOptions.defaultOptions` (`migrateWithBackup: false`, paired with
+  /// `android:allowBackup="false"` and `data_extraction_rules.xml`).
   static const IOSOptions _ios = IOSOptions(
     accessibility: KeychainAccessibility.first_unlock_this_device,
   );
@@ -29,6 +34,9 @@ class SecureSecretStore implements SecretStore {
 
   @override
   Future<void> delete(String key) => _storage.delete(key: key);
+
+  @override
+  Future<Map<String, String>> readAll() => _storage.readAll();
 
   /// Writes [keys] again, so items stored under the old "while unlocked"
   /// level take the current one (a read finds them under any level).

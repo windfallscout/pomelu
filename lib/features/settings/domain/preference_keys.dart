@@ -44,4 +44,5 @@ abstract final class PreferenceKeys {
   // Secrets (SecretStore)
   static const String gatewayToken = 'gateway.token';
   static const String gatewayPassword = 'gateway.password';
+  static const String userSecretPrefix = 'secret.';
 }

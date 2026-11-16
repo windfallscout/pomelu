@@ -1800,4 +1800,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get screenKeyboardHide => 'Hide keyboard';
+
+  @override
+  String get settingsSecretsSection => 'Secrets';
+
+  @override
+  String get settingsSecretsFooter =>
+      'Stored encrypted in your device keychain. Never backed up or logged.';
+
+  @override
+  String get settingsSecretsEmpty => 'No saved secrets';
+
+  @override
+  String get settingsSecretsLoadFailed => 'Could not open the secret store';
+
+  @override
+  String get settingsSecretsAdd => 'Add secret';
+
+  @override
+  String get settingsSecretsAddTitle => 'New secret';
+
+  @override
+  String get settingsSecretNameLabel => 'Name';
+
+  @override
+  String get settingsSecretNameHint => 'OPENAI_API_KEY';
+
+  @override
+  String get settingsSecretValueLabel => 'Value';
+
+  @override
+  String get settingsSecretValueHint => 'Enter secret value';
+
+  @override
+  String get settingsSecretsSave => 'Save secret';
+
+  @override
+  String get settingsSecretsSaveFailed => 'Could not save secret';
+
+  @override
+  String get settingsSecretsDeleteFailed => 'Could not delete secret';
+
+  @override
+  String get settingsSecretShow => 'Show secret';
+
+  @override
+  String get settingsSecretHide => 'Hide secret';
+
+  @override
+  String get settingsSecretMasked => 'Hidden secret value';
+
+  @override
+  String settingsSecretDelete(String name) {
+    return 'Delete $name';
+  }
+
+  @override
+  String settingsSecretDeleteTitle(String name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get settingsSecretDeleteBody =>
+      'This removes the secret from this device. You cannot undo this.';
+
+  @override
+  String get settingsSecretDeleteAction => 'Delete';
+
+  @override
+  String get settingsSecretReplacesExisting =>
+      'Replaces the saved secret with this name.';
+
+  @override
+  String get chatInputUseSaved => 'Use saved secret';
+
+  @override
+  String chatInputUseMatched(String name) {
+    return 'Use $name';
+  }
 }

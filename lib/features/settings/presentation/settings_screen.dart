@@ -13,6 +13,7 @@ import 'widgets/settings_appearance_section.dart';
 import 'widgets/settings_connection_actions.dart';
 import 'widgets/settings_gateway_section.dart';
 import 'widgets/settings_notifications_section.dart';
+import 'widgets/settings_secrets_section.dart';
 
 /// Gateway connection + appearance. The only settings surface in the app.
 ///
@@ -89,6 +90,8 @@ class _Body extends StatelessWidget {
               SettingsAppearanceSection(),
               _SectionGap(),
               SettingsNotificationsSection(),
+              _SectionGap(),
+              SettingsSecretsSection(),
               _SectionGap(),
               SettingsAboutSection(),
             ],

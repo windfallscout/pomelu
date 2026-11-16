@@ -3075,6 +3075,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide keyboard'**
   String get screenKeyboardHide;
+
+  /// No description provided for @settingsSecretsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Secrets'**
+  String get settingsSecretsSection;
+
+  /// No description provided for @settingsSecretsFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored encrypted in your device keychain. Never backed up or logged.'**
+  String get settingsSecretsFooter;
+
+  /// No description provided for @settingsSecretsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved secrets'**
+  String get settingsSecretsEmpty;
+
+  /// No description provided for @settingsSecretsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the secret store'**
+  String get settingsSecretsLoadFailed;
+
+  /// No description provided for @settingsSecretsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add secret'**
+  String get settingsSecretsAdd;
+
+  /// No description provided for @settingsSecretsAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New secret'**
+  String get settingsSecretsAddTitle;
+
+  /// No description provided for @settingsSecretNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get settingsSecretNameLabel;
+
+  /// No description provided for @settingsSecretNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'OPENAI_API_KEY'**
+  String get settingsSecretNameHint;
+
+  /// No description provided for @settingsSecretValueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get settingsSecretValueLabel;
+
+  /// No description provided for @settingsSecretValueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter secret value'**
+  String get settingsSecretValueHint;
+
+  /// No description provided for @settingsSecretsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save secret'**
+  String get settingsSecretsSave;
+
+  /// No description provided for @settingsSecretsSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save secret'**
+  String get settingsSecretsSaveFailed;
+
+  /// No description provided for @settingsSecretsDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete secret'**
+  String get settingsSecretsDeleteFailed;
+
+  /// No description provided for @settingsSecretShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show secret'**
+  String get settingsSecretShow;
+
+  /// No description provided for @settingsSecretHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide secret'**
+  String get settingsSecretHide;
+
+  /// No description provided for @settingsSecretMasked.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden secret value'**
+  String get settingsSecretMasked;
+
+  /// Spoken label and tooltip of the delete button on a saved secret row.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}'**
+  String settingsSecretDelete(String name);
+
+  /// Confirm title before deleting a saved secret.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String settingsSecretDeleteTitle(String name);
+
+  /// No description provided for @settingsSecretDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the secret from this device. You cannot undo this.'**
+  String get settingsSecretDeleteBody;
+
+  /// No description provided for @settingsSecretDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get settingsSecretDeleteAction;
+
+  /// No description provided for @settingsSecretReplacesExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'Replaces the saved secret with this name.'**
+  String get settingsSecretReplacesExisting;
+
+  /// No description provided for @chatInputUseSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Use saved secret'**
+  String get chatInputUseSaved;
+
+  /// Button in the masked input card when a saved secret matches the requested name.
+  ///
+  /// In en, this message translates to:
+  /// **'Use {name}'**
+  String chatInputUseMatched(String name);
 }
 
 class _AppLocalizationsDelegate
