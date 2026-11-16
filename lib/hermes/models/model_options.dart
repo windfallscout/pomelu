@@ -55,3 +55,37 @@ List<String> _stringsFromJson(Object? json) =>
 /// The rows of `providers`; a malformed row is left out.
 List<ModelProvider> _providersFromJson(Object? json) =>
     parseRows(json, ModelProvider.fromJson, what: 'provider');
+
+/// Outcome of a session model switch request.
+sealed class ModelSwitchResult {
+  const ModelSwitchResult();
+}
+
+/// The gateway accepted the model switch (immediately, or queued for the next
+/// turn when [deferred] is true).
+final class ModelSwitched extends ModelSwitchResult {
+  const ModelSwitched({
+    required this.model,
+    this.provider = '',
+    this.deferred = false,
+  });
+
+  final String model;
+  final String provider;
+  final bool deferred;
+}
+
+/// A selection guard requires explicit confirmation before applying.
+final class ModelSwitchConfirmRequired extends ModelSwitchResult {
+  const ModelSwitchConfirmRequired({
+    required this.message,
+    this.token,
+    this.targetModel = '',
+    this.targetProvider = '',
+  });
+
+  final String message;
+  final String? token;
+  final String targetModel;
+  final String targetProvider;
+}

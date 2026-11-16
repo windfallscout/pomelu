@@ -87,6 +87,9 @@ class _Run {
   String? delivering;
   bool staging = false;
   bool deleting = false;
+  int modelSwitchSeq = 0;
+  int effortSeq = 0;
+  Future<void>? settingModel;
   Timer? stopGuard;
   Timer? follow;
 
@@ -187,28 +190,117 @@ class ChatController extends _$ChatController
   }
 
   /// `session.info` confirms the switch.
-  Future<void> switchModel(String model, {String? provider}) => _setOnSession(
-    (run, id) =>
-        run.api.switchModel(runtimeId: id, model: model, provider: provider),
-    (s) => s.copyWith(model: model, provider: provider ?? s.provider),
-  );
-
-  Future<void> setEffort(String effort) => _setOnSession(
-    (run, id) => run.api.setReasoningEffort(runtimeId: id, effort: effort),
-    (s) => s.copyWith(effort: effort),
-  );
-
-  Future<void> _setOnSession(
-    Future<void> Function(_Run run, String runtimeId) call,
-    ChatState Function(ChatState s) done,
-  ) async {
+  Future<void> switchModel(
+    String model, {
+    String? provider,
+    Future<bool> Function(String message)? confirm,
+  }) {
     final run = _live;
-    if (run == null || state.runtimeId.isEmpty) return;
+    if (run == null) return Future<void>.value();
+    final seq = ++run.modelSwitchSeq;
+    final prior = run.settingModel;
+    final task = () async {
+      if (prior != null) {
+        try {
+          await prior;
+        } on Object catch (_) {}
+      }
+      if (!run.live || seq != run.modelSwitchSeq) return;
+      await _runSetting(
+        run,
+        () => seq == run.modelSwitchSeq,
+        'model switch',
+        () async {
+          var result = await _onSession<ModelSwitchResult>(
+            run,
+            (id) => run.api.switchModel(
+              runtimeId: id,
+              model: model,
+              provider: provider,
+            ),
+          );
+          if (!run.live || seq != run.modelSwitchSeq) return;
+          if (result case final ModelSwitchConfirmRequired ask) {
+            if (confirm == null) {
+              state = state.copyWith(error: ServerFailure(ask.message));
+              return;
+            }
+            final ok = await confirm(ask.message);
+            if (!run.live || seq != run.modelSwitchSeq || !ok) return;
+            result = await _onSession<ModelSwitchResult>(
+              run,
+              (id) => run.api.switchModel(
+                runtimeId: id,
+                model: model,
+                provider: provider,
+                confirm: ask.token ?? 'confirm',
+              ),
+            );
+            if (!run.live || seq != run.modelSwitchSeq) return;
+            if (result case final ModelSwitchConfirmRequired again) {
+              state = state.copyWith(error: ServerFailure(again.message));
+              return;
+            }
+          }
+          if (result case final ModelSwitched switched) {
+            state = state.copyWith(
+              model: switched.model.isNotEmpty ? switched.model : model,
+              provider: switched.provider.isNotEmpty
+                  ? switched.provider
+                  : (provider ?? state.provider),
+              error: null,
+            );
+          }
+        },
+      );
+    }();
+    run.settingModel = task.whenComplete(() {
+      if (identical(run.settingModel, task)) run.settingModel = null;
+    });
+    return run.settingModel!;
+  }
+
+  Future<void> setEffort(String effort) {
+    final run = _live;
+    if (run == null) return Future<void>.value();
+    final seq = ++run.effortSeq;
+    return _runSetting(
+      run,
+      () => seq == run.effortSeq,
+      'reasoning effort change',
+      () async {
+        await _onSession(
+          run,
+          (id) => run.api.setReasoningEffort(runtimeId: id, effort: effort),
+        );
+        if (run.live && seq == run.effortSeq) {
+          state = state.copyWith(effort: effort, error: null);
+        }
+      },
+    );
+  }
+
+  Future<void> _runSetting(
+    _Run run,
+    bool Function() isCurrent,
+    String what,
+    Future<void> Function() body,
+  ) async {
+    state = state.copyWith(error: null);
+    if (!await _ensureSession(run) || !isCurrent()) return;
     try {
-      await call(run, state.runtimeId);
-      if (run.live) state = done(state);
+      await body();
+    } on CancelledFailure {
+      return;
     } on HermesFailure catch (e) {
-      if (run.live) state = state.copyWith(error: e);
+      if (run.live && isCurrent()) state = state.copyWith(error: e);
+    } on Object catch (e, st) {
+      log.w('$what failed', error: e, stackTrace: st);
+      if (run.live && isCurrent()) {
+        state = state.copyWith(
+          error: ProtocolFailure('$what failed', cause: e),
+        );
+      }
     }
   }
 

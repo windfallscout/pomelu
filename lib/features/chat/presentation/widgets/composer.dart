@@ -17,6 +17,7 @@ import '../../../../hermes/models/local_attachment.dart';
 import '../../../share/domain/composer_seed.dart';
 import '../../data/attachments.dart';
 import '../../domain/chat_target.dart';
+import '../../domain/model_catalog.dart';
 import '../../domain/slash_command.dart';
 import '../chat_controller.dart';
 import '../composer_draft.dart';

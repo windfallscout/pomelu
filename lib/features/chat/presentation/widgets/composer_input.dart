@@ -191,9 +191,25 @@ mixin _ComposerInput on ConsumerState<Composer> {
       load: _controller.modelOptions,
       currentModel: state.model,
       currentEffort: state.effort,
-      onModel: (model, provider) =>
-          unawaited(_controller.switchModel(model, provider: provider)),
+      onModel: (model, provider) => unawaited(
+        _controller.switchModel(
+          model,
+          provider: provider,
+          confirm: (message) => _confirmModelSwitch(model, message),
+        ),
+      ),
       onEffort: (effort) => unawaited(_controller.setEffort(effort)),
+    );
+  }
+
+  Future<bool> _confirmModelSwitch(String model, String message) {
+    if (!mounted) return Future.value(false);
+    return showConfirmDialog(
+      context,
+      title: context.l10n.composerModelConfirmTitle(modelDisplayName(model)),
+      body: message,
+      confirmLabel: context.l10n.composerModelSwitchAnyway,
+      icon: CupertinoIcons.exclamationmark_triangle,
     );
   }
 

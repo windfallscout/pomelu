@@ -9,6 +9,7 @@ import 'package:hermes/hermes/hermes_constants.dart';
 import 'package:hermes/hermes/hermes_failure.dart';
 import 'package:hermes/hermes/models/bot_screen.dart';
 import 'package:hermes/hermes/models/gateway_action.dart';
+import 'package:hermes/hermes/models/model_options.dart';
 
 import '../support/fixtures.dart';
 import 'support/loopback_gateway.dart';
@@ -180,6 +181,97 @@ void main() {
       await api.interrupt('r1');
       expect(sent('session.interrupt'), {'session_id': 'r1'});
 
+      gateway.rpc['session.resume'] = (_) => const RpcResult({
+        'session_id': 'r1',
+        'revision': 2,
+        'execution_generation': 1,
+      });
+      var mutates = 0;
+      gateway.rpc['session.mutate'] = (p) {
+        mutates++;
+        if (mutates == 1) {
+          return const RpcError(
+            HermesProtocol.errSessionNotFound,
+            'revision_conflict',
+            data: {
+              'reason': 'revision_conflict',
+              'revision': 3,
+              'execution_generation': 1,
+            },
+          );
+        }
+        final payload = p['payload'] as Map<String, dynamic>;
+        if (payload['confirm'] == null) {
+          return const RpcResult({
+            'session_id': 'r1',
+            'operation': 'model',
+            'status': 'confirmation_required',
+            'confirm_required': true,
+            'confirm': 'tok-1',
+            'confirm_message': 'Large context switch',
+            'target_model': 'openrouter/anthropic/claude-4.5:beta',
+            'target_provider': 'openrouter',
+          });
+        }
+        return const RpcResult({
+          'session_id': 'r1',
+          'operation': 'model',
+          'revision': 4,
+          'model': 'openrouter/anthropic/claude-4.5:beta',
+          'provider': 'openrouter',
+        });
+      };
+
+      final first = await api.switchModel(
+        runtimeId: 'r1',
+        model: 'openrouter/anthropic/claude-4.5:beta',
+        provider: 'openrouter',
+      );
+      expect(first, isA<ModelSwitchConfirmRequired>());
+      final ask = first as ModelSwitchConfirmRequired;
+      expect(ask.token, 'tok-1');
+      expect(ask.message, 'Large context switch');
+      expect(sent('session.mutate')['expected_revision'], 3);
+
+      final confirmed = await api.switchModel(
+        runtimeId: 'r1',
+        model: 'openrouter/anthropic/claude-4.5:beta',
+        provider: 'openrouter',
+        confirm: ask.token,
+      );
+      expect(
+        confirmed,
+        isA<ModelSwitched>().having(
+          (r) => r.model,
+          'model',
+          'openrouter/anthropic/claude-4.5:beta',
+        ),
+      );
+      expect(sent('session.mutate')['operation'], 'model');
+      expect(sent('session.mutate')['payload'], {
+        'model': 'openrouter/anthropic/claude-4.5:beta',
+        'provider': 'openrouter',
+        'confirm': 'tok-1',
+      });
+
+      // Legacy gateway fallback: no revision/generation -> config.set, then slash.exec.
+      gateway.rpc['session.resume'] = (_) =>
+          const RpcResult({'session_id': 'r1'});
+      gateway.rpc['config.set'] = (_) =>
+          const RpcResult({'key': 'model', 'value': 'gpt-5'});
+      final legacy = await api.switchModel(
+        runtimeId: 'r1',
+        model: 'gpt-5',
+        provider: 'openai',
+      );
+      expect(
+        legacy,
+        isA<ModelSwitched>().having((r) => r.model, 'model', 'gpt-5'),
+      );
+      expect(sent('config.set')['value'], 'model gpt-5 --provider openai');
+
+      gateway.rpc['config.set'] = (_) =>
+          const RpcError(HermesProtocol.errMethodNotFound, 'not found');
       await api.switchModel(
         runtimeId: 'r1',
         model: 'openrouter/anthropic/claude-4.5:beta',
@@ -189,12 +281,14 @@ void main() {
         sent('slash.exec')['command'],
         'model openrouter/anthropic/claude-4.5:beta --provider openrouter',
       );
+
       for (final bad in ['x; rm -rf /', '--yolo', 'a b']) {
         expect(
           await caught(api.switchModel(runtimeId: 'r1', model: bad)),
           isA<ProtocolFailure>(),
         );
       }
+      gateway.rpc['config.set'] = (_) => const RpcResult({});
       await api.setReasoningEffort(runtimeId: 'r1', effort: 'high');
       expect(sent('config.set'), {
         'session_id': 'r1',

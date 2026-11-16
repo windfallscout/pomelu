@@ -15,6 +15,7 @@ import 'package:hermes/hermes/events/gateway_event.dart';
 import 'package:hermes/hermes/hermes_constants.dart';
 import 'package:hermes/hermes/hermes_failure.dart';
 import 'package:hermes/hermes/models/context_breakdown.dart';
+import 'package:hermes/hermes/models/model_options.dart';
 import 'package:hermes/hermes/models/session_message.dart';
 import 'package:hermes/hermes/models/session_resume.dart';
 import 'package:hermes/hermes/models/session_summary.dart';
@@ -455,4 +456,54 @@ void main() {
     expect(find.text('rm -rf /tmp/x'), findsOneWidget);
     expect(find.text('Allow once'), findsOneWidget);
   });
+
+  testWidgets(
+    'picking a model from settings confirms if needed and updates the header',
+    (tester) async {
+      final api = ScriptedApi()
+        ..modelOptionsResult = const ModelOptions(
+          model: 'openai/gpt-4o',
+          provider: 'openai',
+          providers: [
+            ModelProvider(
+              slug: 'openai',
+              name: 'OpenAI',
+              isCurrent: true,
+              models: ['openai/gpt-4o', 'openai/gpt-5'],
+            ),
+          ],
+        )
+        ..switchModelScript.add(
+          const ModelSwitchConfirmRequired(
+            message: 'Large context switch cost warning',
+            token: 'tok-confirm',
+            targetModel: 'openai/gpt-5',
+            targetProvider: 'openai',
+          ),
+        )
+        ..resume = (id) => SessionResume(
+          sessionId: 'rt-1',
+          storedSessionId: id,
+          messagesOmitted: true,
+          info: const RuntimeInfo(model: 'openai/gpt-4o', provider: 'openai'),
+        );
+      await openChat(tester, api: api);
+      expect(find.text('gpt-4o'), findsOneWidget);
+
+      await tester.tap(find.byIcon(CupertinoIcons.slider_horizontal_3));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('gpt-5'));
+      await tester.pumpAndSettle();
+
+      // Guarded model prompts for confirmation, then resends with token.
+      expect(find.text('Large context switch cost warning'), findsOneWidget);
+      await tester.tap(find.text('Switch anyway'));
+      await tester.pumpAndSettle();
+
+      expect(api.modelSwitches, hasLength(2));
+      expect(api.modelSwitches.first.confirm, isNull);
+      expect(api.modelSwitches.last.confirm, 'tok-confirm');
+      expect(find.text('gpt-5'), findsOneWidget);
+    },
+  );
 }
